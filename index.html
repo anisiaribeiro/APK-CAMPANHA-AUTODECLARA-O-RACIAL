@@ -70,7 +70,7 @@ nav button b{display:block;font-size:1.4rem;line-height:1.1}
 nav button[aria-current=page]{background:var(--orange);color:#1b1100;opacity:1}
 small{color:var(--muted)}
 
-.slogo{width:96px;height:auto;flex:none;}
+.slogo{width:96px;height:auto;flex:none;filter:drop-shadow(0 3px 0 rgba(0,0,0,.15))}
 .hero img{animation:fl 4s ease-in-out infinite}.hero h1{background:linear-gradient(90deg,#fff,#FFC928,#fff);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:sh 4s linear infinite}
 @keyframes fl{50%{transform:translateY(-8px) rotate(-1deg)}}@keyframes sh{to{background-position:200% center}}
 .pulse{animation:pu 1.8s ease-in-out infinite;display:inline-block;text-decoration:none}@keyframes pu{50%{transform:scale(1.07)}}
@@ -187,8 +187,14 @@ function show(id){if(!PAGES.some(p=>p[0]===id))id="inicio";stop();$$(".pg").forE
 document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g)show(g.dataset.go);const s=e.target.closest("[data-say]");if(s)say(document.getElementById(s.dataset.say).innerText,s)});
 addEventListener("hashchange",()=>show(location.hash.slice(1)));
 /* audio */
-let cur=null;function stop(){try{speechSynthesis.cancel()}catch(e){}if(cur){cur.textContent=cur.dataset.l;cur=null}}
-function say(t,b){if(!("speechSynthesis" in window)){b.textContent="Áudio indisponível";return}const same=cur===b;stop();if(same)return;b.dataset.l=b.textContent;b.textContent="⏹ Parar";cur=b;const u=new SpeechSynthesisUtterance(t);u.lang="pt-BR";u.rate=.95;const v=speechSynthesis.getVoices().find(v=>v.lang&&v.lang.startsWith("pt-BR"));if(v)u.voice=v;u.onend=()=>{if(cur===b){b.textContent=b.dataset.l;cur=null}};speechSynthesis.speak(u)}
+let cur=null,VZ=[];function loadV(){try{VZ=speechSynthesis.getVoices()}catch(e){}}loadV();try{speechSynthesis.onvoiceschanged=loadV}catch(e){}
+function stop(){try{if(speechSynthesis.speaking||speechSynthesis.pending)speechSynthesis.cancel()}catch(e){}if(cur){cur.textContent=cur.dataset.l;cur=null}}
+function say(t,b){if(!("speechSynthesis" in window)||typeof SpeechSynthesisUtterance==="undefined"){alert("Este navegador não tem leitura em voz alta. Tente o Chrome.");return}
+const same=cur===b;stop();if(same)return;b.dataset.l=b.textContent;b.textContent="⏹ Parar";cur=b;const my=b;loadV();
+const v=VZ.find(x=>/^pt[-_]BR/i.test(x.lang))||VZ.find(x=>/^pt/i.test(x.lang));
+const parts=t.split(/(?<=[.!?:;])\s+|\n+/).filter(s=>s.trim());
+setTimeout(()=>{if(cur!==my)return;parts.forEach((s,i)=>{const u=new SpeechSynthesisUtterance(s.trim());u.lang="pt-BR";u.rate=.95;if(v)u.voice=v;if(i===parts.length-1)u.onend=u.onerror=()=>{if(cur===my){my.textContent=my.dataset.l;cur=null}};speechSynthesis.speak(u)});
+if(!v)toast("Se não ouvir nada, o aparelho pode estar sem voz em português nas configurações de voz.")},150)}
 /* categorias */
 let seen=new Set();try{seen=new Set(JSON.parse(localStorage.getItem("seen")||"[]"))}catch(e){}
 function tiles(){$("#tiles").innerHTML=CATS.map((c,i)=>`<button class="tile${seen.has(i)?" seen":""}" data-i="${i}"><img src="${c[2]}" alt="${c[7]}"><span>${c[0]}</span></button>`).join("");$("#cnt").textContent=seen.size+" de 8";$("#pb").style.width=seen.size/8*100+"%"}
